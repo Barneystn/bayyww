@@ -1,28 +1,37 @@
 export async function onRequest(context) {
   const { request } = context;
-  const url = new URL(request.url);
 
-  // دریافت URL اصلی از مسیر (بدون استفاده از پارامتر data)
-  const pathname = url.pathname;
-  const originalUrl = pathname.replace(/^\/+/, ''); // حذف "/" از ابتدای مسیر
+  if (request.method !== 'POST') {
+    return new Response('Only POST method is allowed', { status: 405 });
+  }
 
+  let requestBody;
+  try {
+    requestBody = await request.json();
+  } catch (error) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  const originalUrl = requestBody.url;
   if (!originalUrl) {
-    return new Response('Original URL is missing', { status: 400 });
+    return new Response('URL is missing in the request body', { status: 400 });
+  }
+
+  if (!/^https?:\/\//i.test(originalUrl)) {
+    return new Response('Invalid URL format', { status: 400 });
   }
 
   try {
-    // تلاش برای دانلود فایل از URL اصلی
-    const response = await fetch(`https://${originalUrl}`, {
-      headers: request.headers,
-    });
-
+    // Fetch کردن فایل از URL اصلی
+    const response = await fetch(originalUrl, { headers: request.headers });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
+    const filename = originalUrl.split('/').pop();
     const contentLength = response.headers.get('Content-Length');
     const newHeaders = new Headers(response.headers);
-    newHeaders.set('Content-Disposition', `attachment; filename="${originalUrl.split('/').pop()}"`);
+    newHeaders.set('Content-Disposition', `attachment; filename="${filename}"`);
     newHeaders.set('Accept-Ranges', 'bytes');
 
     if (contentLength) {
@@ -50,7 +59,6 @@ export async function onRequest(context) {
       });
     }
   } catch (error) {
-    // نمایش خطا و اطلاعات لینک
-    return new Response(`Error fetching URL: ${originalUrl}, Error message: ${error.message}`, { status: 400 });
+    return new Response(`Error: ${error.message}`, { status: 400 });
   }
 }
