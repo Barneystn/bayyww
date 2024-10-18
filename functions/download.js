@@ -1,16 +1,18 @@
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
-  const searchParams = url.searchParams;
 
-  const encodedData = searchParams.get('data');
-  if (!encodedData) {
-    return new Response('Data parameter is missing', { status: 400 });
+  // دریافت URL اصلی از مسیر (بدون استفاده از پارامتر data)
+  const pathname = url.pathname;
+  const originalUrl = pathname.replace(/^\/+/, ''); // حذف "/" از ابتدای مسیر
+
+  if (!originalUrl) {
+    return new Response('Original URL is missing', { status: 400 });
   }
 
   try {
-    const { url: decodedUrl, filename } = JSON.parse(atob(encodedData));
-    const response = await fetch(decodedUrl, {
+    // تلاش برای دانلود فایل از URL اصلی
+    const response = await fetch(`https://${originalUrl}`, {
       headers: request.headers,
     });
 
@@ -20,7 +22,7 @@ export async function onRequest(context) {
 
     const contentLength = response.headers.get('Content-Length');
     const newHeaders = new Headers(response.headers);
-    newHeaders.set('Content-Disposition', `attachment; filename="${filename}"`);
+    newHeaders.set('Content-Disposition', `attachment; filename="${originalUrl.split('/').pop()}"`);
     newHeaders.set('Accept-Ranges', 'bytes');
 
     if (contentLength) {
