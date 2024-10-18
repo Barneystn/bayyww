@@ -1,52 +1,89 @@
 export async function onRequest(context) {
   const { request } = context;
+  const url = new URL(request.url);
 
-  if (request.method !== 'POST') {
-    return new Response('Only POST method is allowed', { status: 405 });
-  }
-
-  let requestBody;
-  try {
-    requestBody = await request.json();
-  } catch (error) {
-    return new Response('Invalid JSON', { status: 400 });
-  }
-
-  let originalUrl = requestBody.url;
+  const originalUrl = url.searchParams.get('url'); // این خط را حذف می‌کنیم
   if (!originalUrl) {
-    return new Response('URL field is missing in the request body', { status: 400 });
+    return new Response('URL parameter is missing', { status: 400 });
   }
 
-  if (!/^https?:\/\//i.test(originalUrl)) {
-    originalUrl = 'http://' + originalUrl;
+  const normalizedUrl = normalizeUrl(originalUrl);
+  const blockedDomains = await fetchBlockedDomains();
+
+  if (isDomainBlocked(normalizedUrl, blockedDomains)) {
+    return new Response('This domain is not allowed', { status: 403 });
   }
 
-  // Fetch the blacklist from a remote text file
-  let blockedDomains = [];
+  const encodedData = encodeUrlData(normalizedUrl);
+  const { proxiedUrl, watchUrl } = generateUrls(url, encodedData);
+
+  return new Response(renderHtml(proxiedUrl, watchUrl, extractFilename(normalizedUrl)), { 
+    headers: { 'Content-Type': 'text/html' } 
+  });
+}
+
+// استخراج URL اصلی از URL به جای پارامترهای جستجو
+function getOriginalUrl(url) {
+  const params = new URL(url).search; // قسمت جستجو
+  const urlParams = new URLSearchParams(params);
+  return urlParams.get('url');
+}
+
+// عادی‌سازی URL با اضافه کردن پروتکل در صورت لزوم
+function normalizeUrl(url) {
+  if (!/^https?:\/\//i.test(url)) {
+    return 'http://' + url;
+  }
+  return url;
+}
+
+// Fetch blocked domains from a remote source
+async function fetchBlockedDomains() {
   try {
     const response = await fetch('https://raw.githubusercontent.com/MinitorMHS/CF_Web_Proxy/main/Functions/blacklist.txt');
     if (response.ok) {
       const blacklistContent = await response.text();
-      blockedDomains = blacklistContent.split('\n').filter(domain => domain.trim() !== '');
+      return blacklistContent.split('\n').filter(domain => domain.trim() !== '');
     } else {
       console.error('Error fetching blacklist:', response.statusText);
     }
   } catch (error) {
     console.error('Error fetching blacklist:', error);
   }
+  return [];
+}
 
-  const requestedDomain = new URL(originalUrl).hostname;
-  if (blockedDomains.includes(requestedDomain)) {
-    return new Response('This domain is not allowed', { status: 403 });
-  }
+// Check if the domain is in the blocked list
+function isDomainBlocked(url, blockedDomains) {
+  const requestedDomain = new URL(url).hostname;
+  return blockedDomains.includes(requestedDomain);
+}
 
-  const filename = originalUrl.split('/').pop();
-  const encodedData = btoa(JSON.stringify({ url: originalUrl, filename: filename }));
+// Encode the original URL and filename for the final URLs
+function encodeUrlData(url) {
+  const filename = extractFilename(url);
+  return btoa(JSON.stringify({ url, filename }));
+}
 
-  const proxiedUrl = `${request.url}/download?data=${encodedData}`;
-  const watchUrl = `${request.url}/watch?data=${encodedData}`;
+// Extract filename from URL
+function extractFilename(url) {
+  return url.split('/').pop();
+}
 
-  return new Response(`
+// Generate download and watch URLs based on the request's hostname
+function generateUrls(requestUrl, encodedData) {
+  const isCustomDomain = requestUrl.hostname === 'your-custom-domain.com';
+  const baseDomain = isCustomDomain ? 'https://your-domain.ir.cdn.ir' : requestUrl.origin;
+  
+  return {
+    proxiedUrl: `${baseDomain}/download?data=${encodedData}`,
+    watchUrl: `${baseDomain}/watch?data=${encodedData}`
+  };
+}
+
+// Generate HTML content
+function renderHtml(proxiedUrl, watchUrl, filename) {
+  return `
     <html>
       <head>
         <style>
@@ -77,5 +114,5 @@ export async function onRequest(context) {
         <p class="filename">Filename: ${filename}</p>
       </body>
     </html>
-  `, { headers: { 'Content-Type': 'text/html' } });
+  `;
 }
