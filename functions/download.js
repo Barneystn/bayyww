@@ -50,6 +50,7 @@ export async function onRequest(context) {
       });
     }
   } catch (error) {
-    return new Response(`Error: ${error.message}`, { status: 400 });
+    // نمایش خطا و اطلاعات لینک
+    return new Response(`Error fetching URL: ${originalUrl}, Error message: ${error.message}`, { status: 400 });
   }
 }
