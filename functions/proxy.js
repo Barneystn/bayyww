@@ -32,17 +32,16 @@ export async function onRequest(context) {
   }
 
   const filename = originalUrl.split('/').pop();
-  const encodedData = btoa(JSON.stringify({ url: originalUrl, filename: filename }));
 
   // Check the hostname and modify the links
   let proxiedUrl;
   let watchUrl;
   if (url.hostname === 'your-custom-domain.com') {
-    proxiedUrl = `https://your-domain.ir.cdn.ir/download?data=${encodedData}`;
-    watchUrl = `https://your-domain.ir.cdn.ir/watch?data=${encodedData}`;
+    proxiedUrl = `https://your-domain.ir.cdn.ir/download?url=${originalUrl}`;
+    watchUrl = `https://your-domain.ir.cdn.ir/watch?url=${originalUrl}`;
   } else {
-    proxiedUrl = `${url.origin}/download?data=${encodedData}`;
-    watchUrl = `${url.origin}/watch?data=${encodedData}`;
+    proxiedUrl = `${url.origin}/download?url=${originalUrl}`;
+    watchUrl = `${url.origin}/watch?url=${originalUrl}`;
   }
 
   return new Response(`
