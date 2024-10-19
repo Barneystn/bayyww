@@ -3,14 +3,15 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const searchParams = url.searchParams;
 
-  const encodedData = searchParams.get('data');
-  if (!encodedData) {
-    return new Response('Data parameter is missing', { status: 400 });
+  const originalUrl = searchParams.get('url');
+  if (!originalUrl) {
+    return new Response('URL parameter is missing', { status: 400 });
   }
 
+  const filename = originalUrl.split('/').pop();
+
   try {
-    const { url: decodedUrl, filename } = JSON.parse(atob(encodedData));
-    const response = await fetch(decodedUrl, {
+    const response = await fetch(originalUrl, {
       headers: request.headers,
     });
 
