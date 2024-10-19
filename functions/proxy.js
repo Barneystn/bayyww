@@ -4,11 +4,15 @@ export async function onRequest(context) {
   const searchParams = url.searchParams;
 
   let originalUrl = searchParams.get('url');
+  if (!originalUrl) {
+    return new Response('URL parameter is missing', { status: 400 });
+  }
 
   if (!/^https?:\/\//i.test(originalUrl)) {
     originalUrl = 'http://' + originalUrl;
   }
 
+  // Fetch the blacklist from a remote text file
   let blockedDomains = [];
   try {
     const response = await fetch('https://raw.githubusercontent.com/MinitorMHS/CF_Web_Proxy/main/Functions/blacklist.txt');
@@ -21,7 +25,7 @@ export async function onRequest(context) {
   } catch (error) {
     console.error('Error fetching blacklist:', error);
   }
-
+  
   const requestedDomain = new URL(originalUrl).hostname;
   if (blockedDomains.includes(requestedDomain)) {
     return new Response('This domain is not allowed', { status: 403 });
@@ -30,11 +34,12 @@ export async function onRequest(context) {
   const filename = originalUrl.split('/').pop();
   const encodedData = btoa(JSON.stringify({ url: originalUrl, filename: filename }));
 
+  // Check the hostname and modify the links
   let proxiedUrl;
   let watchUrl;
-  if (url.hostname === 'goi.562061.ir.cdn.ir') {  // جایگزینی دامنه شما
-    proxiedUrl = `https://goi.562061.ir.cdn.ir/download?data=${encodedData}`;  // استفاده از دامنه شما
-    watchUrl = `https://goi.562061.ir.cdn.ir/watch?data=${encodedData}`;  // استفاده از دامنه شما
+  if (url.hostname === 'your-custom-domain.com') {
+    proxiedUrl = `https://your-domain.ir.cdn.ir/download?data=${encodedData}`;
+    watchUrl = `https://your-domain.ir.cdn.ir/watch?data=${encodedData}`;
   } else {
     proxiedUrl = `${url.origin}/download?data=${encodedData}`;
     watchUrl = `${url.origin}/watch?data=${encodedData}`;
