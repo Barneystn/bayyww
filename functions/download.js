@@ -4,6 +4,7 @@ export async function onRequest(context) {
   const searchParams = url.searchParams;
 
   const originalUrl = searchParams.get('url');
+  console.log('Received URL:', originalUrl); // خط لاگ‌گذاری
   if (!originalUrl) {
     return new Response('URL parameter is missing', { status: 400 });
   }
