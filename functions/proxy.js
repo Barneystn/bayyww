@@ -32,9 +32,9 @@ export async function onRequest(context) {
 
   let proxiedUrl;
   let watchUrl;
-  if (url.hostname === 'your-custom-domain.com') {
-    proxiedUrl = `https://your-domain.ir.cdn.ir/download?data=${encodedData}`;
-    watchUrl = `https://your-domain.ir.cdn.ir/watch?data=${encodedData}`;
+  if (url.hostname === 'goi.562061.ir.cdn.ir') {  // جایگزینی دامنه شما
+    proxiedUrl = `https://goi.562061.ir.cdn.ir/download?data=${encodedData}`;  // استفاده از دامنه شما
+    watchUrl = `https://goi.562061.ir.cdn.ir/watch?data=${encodedData}`;  // استفاده از دامنه شما
   } else {
     proxiedUrl = `${url.origin}/download?data=${encodedData}`;
     watchUrl = `${url.origin}/watch?data=${encodedData}`;
