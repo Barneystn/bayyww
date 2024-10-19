@@ -1,12 +1,15 @@
 export async function onRequest(context) {
   const { request } = context;
   const url = new URL(request.url);
+  const searchParams = url.searchParams;
+
+  const encodedData = searchParams.get('data');
+  if (!encodedData) {
+    return new Response('Data parameter is missing', { status: 400 });
+  }
 
   try {
-    // جایگزین کردن داده‌هایی که قبلاً از URL گرفته می‌شد با مقدارهای ثابت یا پردازش دیگر
-    const decodedUrl = 'https://example.com/file';  // مقدار URL مورد نظر
-    const filename = 'file.txt';  // نام فایل
-
+    const { url: decodedUrl, filename } = JSON.parse(atob(encodedData));
     const response = await fetch(decodedUrl, {
       headers: request.headers,
     });
