@@ -3,16 +3,14 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const searchParams = url.searchParams;
 
-  const originalUrl = searchParams.get('url');
-  console.log('Received URL:', originalUrl); // خط لاگ‌گذاری
-  if (!originalUrl) {
-    return new Response('URL parameter is missing', { status: 400 });
+  const encodedData = searchParams.get('data');
+  if (!encodedData) {
+    return new Response('Data parameter is missing', { status: 400 });
   }
 
-  const filename = originalUrl.split('/').pop();
-
   try {
-    const response = await fetch(originalUrl, {
+    const { url: decodedUrl, filename } = JSON.parse(atob(encodedData));
+    const response = await fetch(decodedUrl, {
       headers: request.headers,
     });
 
