@@ -1,73 +1,72 @@
 export async function onRequest(context) {
   const { request } = context;
 
+  // چک می‌کنیم که درخواست `POST` است یا خیر
   if (request.method !== 'POST') {
-    return new Response('Only POST requests are allowed', { status: 405 });
+    return new Response('Method Not Allowed', { status: 405 });
   }
 
-  let data;
   try {
-    data = await request.json(); // دریافت داده‌ها به صورت JSON
-  } catch (e) {
-    return new Response('Invalid JSON', { status: 400 });
-  }
+    // دریافت و تجزیه JSON ورودی
+    const { url: originalUrl } = await request.json();
 
-  let originalUrl = data.url;
-  if (!originalUrl) {
-    return new Response('URL parameter is missing', { status: 400 });
-  }
-
-  if (!/^https?:\/\//i.test(originalUrl)) {
-    originalUrl = 'http://' + originalUrl;
-  }
-
-  // بارگذاری لیست سیاه
-  let blockedDomains = [];
-  try {
-    const response = await fetch('https://raw.githubusercontent.com/MinitorMHS/CF_Web_Proxy/main/Functions/blacklist.txt');
-    if (response.ok) {
-      const blacklistContent = await response.text();
-      blockedDomains = blacklistContent.split('\n').filter(domain => domain.trim() !== '');
-    } else {
-      console.error('Error fetching blacklist:', response.statusText);
+    if (!originalUrl) {
+      return new Response('URL parameter is missing', { status: 400 });
     }
+
+    // افزودن http در صورتی که لینک بدون پروتکل باشد
+    let validUrl = originalUrl;
+    if (!/^https?:\/\//i.test(validUrl)) {
+      validUrl = 'http://' + validUrl;
+    }
+
+    const filename = validUrl.split('/').pop();
+    const encodedData = btoa(JSON.stringify({ url: validUrl, filename: filename }));
+
+    // ساخت لینک‌های پروکسی
+    const proxiedUrl = `${new URL(request.url).origin}/download?data=${encodedData}`;
+    const watchUrl = `${new URL(request.url).origin}/watch?data=${encodedData}`;
+
+    return new Response(`
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background-color: #f0f0f0;
+            }
+            .container {
+              background-color: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              text-align: center;
+            }
+            .link {
+              color: #007bff;
+              word-break: break-all;
+              margin-top: 10px;
+              display: block;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Your Links</h2>
+            <a href="${watchUrl}" class="link">Watch</a>
+            <a href="${proxiedUrl}" class="link">Download</a>
+            <p><strong>Filename:</strong> ${filename}</p>
+          </div>
+        </body>
+      </html>
+    `, { headers: { 'Content-Type': 'text/html' } });
+
   } catch (error) {
-    console.error('Error fetching blacklist:', error);
+    return new Response(`Error processing request: ${error.message}`, { status: 400 });
   }
-  
-  const requestedDomain = new URL(originalUrl).hostname;
-  if (blockedDomains.includes(requestedDomain)) {
-    return new Response('This domain is not allowed', { status: 403 });
-  }
-
-  const filename = originalUrl.split('/').pop();
-  const encodedData = btoa(JSON.stringify({ url: originalUrl, filename: filename }));
-
-  let proxiedUrl;
-  let watchUrl;
-  if (url.hostname === 'your-custom-domain.com') {
-    proxiedUrl = `https://your-domain.ir.cdn.ir/download?data=${encodedData}`;
-    watchUrl = `https://your-domain.ir.cdn.ir/watch?data=${encodedData}`;
-  } else {
-    proxiedUrl = `${url.origin}/download?data=${encodedData}`;
-    watchUrl = `${url.origin}/watch?data=${encodedData}`;
-  }
-
-  return new Response(`
-    <html>
-      <body>
-        <div class="container">
-          <h1>Watch</h1>
-          <p id="watchLink">${watchUrl}</p>
-          <a href="${watchUrl}" class="button watch-button">Watch</a>
-        </div>
-        <div class="container">
-          <h1>Download</h1>
-          <p id="downloadLink">${proxiedUrl}</p>
-          <a href="${proxiedUrl}" class="button download-button">Download</a>
-        </div>
-        <p class="filename">Filename: ${filename}</p>
-      </body>
-    </html>
-  `, { headers: { 'Content-Type': 'text/html' } });
 }
