@@ -1,9 +1,18 @@
 export async function onRequest(context) {
   const { request } = context;
-  const url = new URL(request.url);
-  const searchParams = url.searchParams;
 
-  let originalUrl = searchParams.get('url');
+  if (request.method !== 'POST') {
+    return new Response('Only POST requests are allowed', { status: 405 });
+  }
+
+  let data;
+  try {
+    data = await request.json(); // دریافت داده‌ها به صورت JSON
+  } catch (e) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  let originalUrl = data.url;
   if (!originalUrl) {
     return new Response('URL parameter is missing', { status: 400 });
   }
@@ -12,7 +21,7 @@ export async function onRequest(context) {
     originalUrl = 'http://' + originalUrl;
   }
 
-  // Fetch the blacklist from a remote text file
+  // بارگذاری لیست سیاه
   let blockedDomains = [];
   try {
     const response = await fetch('https://raw.githubusercontent.com/MinitorMHS/CF_Web_Proxy/main/Functions/blacklist.txt');
@@ -34,7 +43,6 @@ export async function onRequest(context) {
   const filename = originalUrl.split('/').pop();
   const encodedData = btoa(JSON.stringify({ url: originalUrl, filename: filename }));
 
-  // Check the hostname and modify the links
   let proxiedUrl;
   let watchUrl;
   if (url.hostname === 'your-custom-domain.com') {
@@ -47,21 +55,6 @@ export async function onRequest(context) {
 
   return new Response(`
     <html>
-      <head>
-        <style>
-          body { font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #a9a9a9; }
-          .container { background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
-          h1 { color: #333; }
-          #downloadLink, #watchLink { word-break: break-all; color: #007bff; margin-bottom: 30px; }
-          .button-container { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-          .button { padding: 20px 40px; color: white; border: none; border-radius: 20px; cursor: pointer; text-decoration: none; font-size: 18px; width: 200px; }
-          .download-button { background-color: #228b22; }
-          .download-button:hover { background-color: #1e7b1e; }
-          .watch-button { background-color: #4682b4; }
-          .watch-button:hover { background-color: #3b6a8a; }
-          .filename { font-weight: bold; }
-        </style>
-      </head>
       <body>
         <div class="container">
           <h1>Watch</h1>

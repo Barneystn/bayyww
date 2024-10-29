@@ -1,9 +1,18 @@
 export async function onRequest(context) {
   const { request } = context;
-  const url = new URL(request.url);
-  const searchParams = url.searchParams;
 
-  const encodedData = searchParams.get('data');
+  if (request.method !== 'POST') {
+    return new Response('Only POST requests are allowed', { status: 405 });
+  }
+
+  let data;
+  try {
+    data = await request.json(); // دریافت داده‌ها به صورت JSON
+  } catch (e) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  const encodedData = data.data;
   if (!encodedData) {
     return new Response('Data parameter is missing', { status: 400 });
   }
