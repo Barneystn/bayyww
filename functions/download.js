@@ -10,7 +10,7 @@ export async function onRequest(context) {
   const encodedData = url.searchParams.get('data');
 
   if (!encodedData) {
-    return new Response('Data parameter is missing', { status: 400 });
+    return new Response('Data parameter is bad', { status: 400 });
   }
 
   try {
